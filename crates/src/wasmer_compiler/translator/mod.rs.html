@@ -24,6 +24,8 @@
 <span id="21">21</span>
 <span id="22">22</span>
 <span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! This module defines the parser and translator from wasmparser</span>
 <span class="doccomment">//! to a common structure `ModuleInfo`.</span>
@@ -40,7 +42,9 @@
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">sections</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">environ</span>::{<span class="ident">FunctionBodyData</span>, <span class="ident">ModuleEnvironment</span>, <span class="ident">ModuleInfoTranslation</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">environ</span>::{
+    <span class="ident">FunctionBinaryReader</span>, <span class="ident">FunctionBodyData</span>, <span class="ident">ModuleEnvironment</span>, <span class="ident">ModuleInfoTranslation</span>,
+};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">middleware</span>::{
     <span class="ident">FunctionMiddleware</span>, <span class="ident">MiddlewareBinaryReader</span>, <span class="ident">MiddlewareReaderState</span>, <span class="ident">ModuleMiddleware</span>,
     <span class="ident">ModuleMiddlewareChain</span>,
@@ -49,4 +53,5 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">sections</span>::<span class="ident">wptype_to_type</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">state</span>::<span class="ident">ModuleTranslationState</span>;
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../../";window.currentCrate = "wasmer_compiler";</script><script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="wasmer_compiler"></div>
+    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script><script defer src="../../../search-index.js"></script></body></html>

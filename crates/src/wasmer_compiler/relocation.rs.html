@@ -160,6 +160,14 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! Relocation is the process of assigning load addresses for position-dependent</span>
 <span class="doccomment">//! code and data of a program and adjusting the code and data to reflect the</span>
@@ -177,6 +185,8 @@
 <span class="kw">use</span> <span class="kw">crate</span>::<span class="ident">section</span>::<span class="ident">SectionIndex</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">Addend</span>, <span class="ident">CodeOffset</span>, <span class="ident">JumpTable</span>};
 <span class="kw">use</span> <span class="ident">loupe</span>::<span class="ident">MemoryUsage</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-rkyv&quot;</span>)]</span>
+<span class="kw">use</span> <span class="ident">rkyv</span>::{<span class="ident">Archive</span>, <span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">RkyvDeserialize</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">RkyvSerialize</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-serde&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">wasmer_types</span>::<span class="ident">entity</span>::<span class="ident">PrimaryMap</span>;
@@ -185,6 +195,10 @@
 
 <span class="doccomment">/// Relocation kinds for every ISA.</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-serde&quot;</span>, <span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(
+    <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-rkyv&quot;</span>,
+    <span class="ident">derive</span>(<span class="ident">RkyvSerialize</span>, <span class="ident">RkyvDeserialize</span>, <span class="ident">Archive</span>)
+)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">MemoryUsage</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RelocationKind</span> {
     <span class="doccomment">/// absolute 4-byte</span>
@@ -201,21 +215,16 @@
     <span class="ident">X86CallPCRel4</span>,
     <span class="doccomment">/// x86 call to PLT-relative 4-byte</span>
     <span class="ident">X86CallPLTRel4</span>,
-    <span class="comment">// /// x86 GOT PC-relative 4-byte</span>
-    <span class="comment">// X86GOTPCRel4,</span>
-
-    <span class="comment">// /// Arm32 call target</span>
-    <span class="comment">// Arm32Call,</span>
-
-    <span class="comment">// /// Arm64 call target</span>
-    <span class="comment">// Arm64Call,</span>
-
+    <span class="doccomment">/// x86 GOT PC-relative 4-byte</span>
+    <span class="ident">X86GOTPCRel4</span>,
+    <span class="doccomment">/// Arm32 call target</span>
+    <span class="ident">Arm32Call</span>,
+    <span class="doccomment">/// Arm64 call target</span>
+    <span class="ident">Arm64Call</span>,
     <span class="comment">// /// RISC-V call target</span>
     <span class="comment">// RiscvCall,</span>
-
-    <span class="comment">// /// Elf x86_64 32 bit signed PC relative offset to two GOT entries for GD symbol.</span>
-    <span class="comment">// ElfX86_64TlsGd,</span>
-
+    <span class="doccomment">/// Elf x86_64 32 bit signed PC relative offset to two GOT entries for GD symbol.</span>
+    <span class="ident">ElfX86_64TlsGd</span>,
     <span class="comment">// /// Mach-O x86_64 32 bit signed PC relative offset to a `__thread_vars` entry.</span>
     <span class="comment">// MachOX86_64Tlv,</span>
 }
@@ -232,10 +241,9 @@
             <span class="self">Self</span>::<span class="ident">X86PCRelRodata4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;PCRelRodata4&quot;</span>),
             <span class="self">Self</span>::<span class="ident">X86CallPCRel4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;CallPCRel4&quot;</span>),
             <span class="self">Self</span>::<span class="ident">X86CallPLTRel4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;CallPLTRel4&quot;</span>),
-            <span class="comment">// Self::X86GOTPCRel4 =&gt; write!(f, &quot;GOTPCRel4&quot;),</span>
-            <span class="comment">// Self::Arm32Call | Self::Arm64Call | Self::RiscvCall =&gt; write!(f, &quot;Call&quot;),</span>
-
-            <span class="comment">// Self::ElfX86_64TlsGd =&gt; write!(f, &quot;ElfX86_64TlsGd&quot;),</span>
+            <span class="self">Self</span>::<span class="ident">X86GOTPCRel4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;GOTPCRel4&quot;</span>),
+            <span class="self">Self</span>::<span class="ident">Arm32Call</span> <span class="op">|</span> <span class="self">Self</span>::<span class="ident">Arm64Call</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;Call&quot;</span>),
+            <span class="self">Self</span>::<span class="ident">ElfX86_64TlsGd</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;ElfX86_64TlsGd&quot;</span>),
             <span class="comment">// Self::MachOX86_64Tlv =&gt; write!(f, &quot;MachOX86_64Tlv&quot;),</span>
         }
     }
@@ -243,6 +251,10 @@
 
 <span class="doccomment">/// A record of a relocation to perform.</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-serde&quot;</span>, <span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(
+    <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-rkyv&quot;</span>,
+    <span class="ident">derive</span>(<span class="ident">RkyvSerialize</span>, <span class="ident">RkyvDeserialize</span>, <span class="ident">Archive</span>)
+)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">MemoryUsage</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Relocation</span> {
     <span class="doccomment">/// The relocation kind.</span>
@@ -257,6 +269,10 @@
 
 <span class="doccomment">/// Destination function. Can be either user function or some special one, like `memory.grow`.</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-serde&quot;</span>, <span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(
+    <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;enable-rkyv&quot;</span>,
+    <span class="ident">derive</span>(<span class="ident">RkyvSerialize</span>, <span class="ident">RkyvDeserialize</span>, <span class="ident">Archive</span>)
+)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">MemoryUsage</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RelocationTarget</span> {
     <span class="doccomment">/// A relocation to a function defined locally in the wasm (not an imported one).</span>
@@ -321,4 +337,5 @@
 <span class="doccomment">/// Relocations to apply to function bodies.</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">Relocations</span> <span class="op">=</span> <span class="ident">PrimaryMap</span><span class="op">&lt;</span><span class="ident">LocalFunctionIndex</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Relocation</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 </pre></div>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><script>window.rootPath = "../../";window.currentCrate = "wasmer_compiler";</script><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmer_compiler"></div>
+    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script><script defer src="../../search-index.js"></script></body></html>
