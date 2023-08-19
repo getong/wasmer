@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["WORD_SIZE"],"fn":["to_compile_error"],"static":["NEXT_ID"],"struct":["AllocatedArtifact","Artifact","ArtifactId"]};
