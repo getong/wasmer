@@ -330,17 +330,36 @@
 <a href="#330" id="330">330</a>
 <a href="#331" id="331">331</a>
 <a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{pin::Pin, sync::Arc};
 
 <span class="kw">use crate</span>::{
-    os::task::{thread::WasiThreadRunGuard, TaskJoinHandle},
-    runtime::task_manager::{
-        TaskWasm, TaskWasmRecycle, TaskWasmRecycleProperties, TaskWasmRunProperties,
+    os::task::{
+        thread::{RewindResultType, WasiThreadRunGuard},
+        TaskJoinHandle,
+    },
+    runtime::{
+        task_manager::{
+            TaskWasm, TaskWasmRecycle, TaskWasmRecycleProperties, TaskWasmRunProperties,
+        },
+        TaintReason,
     },
     syscalls::rewind_ext,
     RewindState, SpawnError, WasiError, WasiRuntimeError,
 };
-<span class="kw">use </span>bytes::Bytes;
 <span class="kw">use </span>futures::Future;
 <span class="kw">use </span>tracing::<span class="kw-2">*</span>;
 <span class="kw">use </span>wasmer::{Function, FunctionEnvMut, Memory32, Memory64, Module, Store};
@@ -483,6 +502,7 @@
     </span><span class="kw">let </span>rewind_state = <span class="kw">match unsafe </span>{ ctx.bootstrap(<span class="kw-2">&amp;mut </span>store) } {
         <span class="prelude-val">Ok</span>(r) =&gt; r,
         <span class="prelude-val">Err</span>(err) =&gt; {
+            <span class="macro">tracing::warn!</span>(<span class="string">&quot;failed to bootstrap - {}&quot;</span>, err);
             thread.thread.set_status_finished(<span class="prelude-val">Err</span>(err));
             ctx.data(<span class="kw-2">&amp;</span>store)
                 .blocking_on_exit(<span class="prelude-val">Some</span>(Errno::Noexec.into()));
@@ -513,13 +533,14 @@
     ctx: WasiFunctionEnv,
     <span class="kw-2">mut </span>store: Store,
     handle: WasiThreadRunGuard,
-    rewind_state: <span class="prelude-ty">Option</span>&lt;(RewindState, <span class="prelude-ty">Option</span>&lt;Bytes&gt;)&gt;,
+    rewind_state: <span class="prelude-ty">Option</span>&lt;(RewindState, RewindResultType)&gt;,
     recycle: <span class="prelude-ty">Option</span>&lt;Box&lt;TaskWasmRecycle&gt;&gt;,
 ) {
     <span class="kw">let </span>env = ctx.data(<span class="kw-2">&amp;</span>store);
     <span class="kw">let </span>pid = env.pid();
     <span class="kw">let </span>tasks = env.tasks().clone();
     handle.thread.set_status_running();
+    <span class="kw">let </span>runtime = env.runtime.clone();
 
     <span class="comment">// If we need to rewind then do so
     </span><span class="kw">if let </span><span class="prelude-val">Some</span>((rewind_state, rewind_result)) = rewind_state {
@@ -527,7 +548,7 @@
         <span class="kw">if </span>rewind_state.is_64bit {
             <span class="kw">let </span>res = rewind_ext::&lt;Memory64&gt;(
                 <span class="kw-2">&amp;mut </span>ctx,
-                rewind_state.memory_stack,
+                <span class="prelude-val">Some</span>(rewind_state.memory_stack),
                 rewind_state.rewind_stack,
                 rewind_state.store_data,
                 rewind_result,
@@ -540,7 +561,7 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>res = rewind_ext::&lt;Memory32&gt;(
                 <span class="kw-2">&amp;mut </span>ctx,
-                rewind_state.memory_stack,
+                <span class="prelude-val">Some</span>(rewind_state.memory_stack),
                 rewind_state.rewind_stack,
                 rewind_state.store_data,
                 rewind_result,
@@ -569,7 +590,10 @@
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = call_ret {
             <span class="kw">match </span>err.downcast::&lt;WasiError&gt;() {
                 <span class="prelude-val">Ok</span>(WasiError::Exit(code)) <span class="kw">if </span>code.is_success() =&gt; <span class="prelude-val">Ok</span>(Errno::Success),
-                <span class="prelude-val">Ok</span>(err @ WasiError::Exit(<span class="kw">_</span>)) =&gt; <span class="prelude-val">Err</span>(err.into()),
+                <span class="prelude-val">Ok</span>(WasiError::Exit(code)) =&gt; {
+                    runtime.on_taint(TaintReason::NonZeroExitCode(code));
+                    <span class="prelude-val">Err</span>(WasiError::Exit(code).into())
+                }
                 <span class="prelude-val">Ok</span>(WasiError::DeepSleep(deep)) =&gt; {
                     <span class="comment">// Create the callback that will be invoked when the thread respawns after a deep sleep
                     </span><span class="kw">let </span>rewind = deep.rewind;
@@ -580,7 +604,7 @@
                                 ctx,
                                 store,
                                 handle,
-                                <span class="prelude-val">Some</span>((rewind, <span class="prelude-val">Some</span>(rewind_result))),
+                                <span class="prelude-val">Some</span>((rewind, RewindResultType::RewindWithResult(rewind_result))),
                                 recycle,
                             );
                         }
@@ -596,9 +620,13 @@
                 }
                 <span class="prelude-val">Ok</span>(WasiError::UnknownWasiVersion) =&gt; {
                     <span class="macro">debug!</span>(<span class="string">&quot;failed as wasi version is unknown&quot;</span>,);
+                    runtime.on_taint(TaintReason::UnknownWasiVersion);
                     <span class="prelude-val">Ok</span>(Errno::Noexec)
                 }
-                <span class="prelude-val">Err</span>(err) =&gt; <span class="prelude-val">Err</span>(WasiRuntimeError::from(err)),
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    runtime.on_taint(TaintReason::RuntimeError(err.clone()));
+                    <span class="prelude-val">Err</span>(WasiRuntimeError::from(err))
+                }
             }
         } <span class="kw">else </span>{
             <span class="prelude-val">Ok</span>(Errno::Success)

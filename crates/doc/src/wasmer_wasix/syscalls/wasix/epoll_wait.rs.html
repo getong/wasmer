@@ -240,6 +240,7 @@
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Errno, WasiError&gt; {
     <span class="macro">wasi_try_ok!</span>(WasiEnv::process_signals_and_exit(<span class="kw-2">&amp;mut </span>ctx)<span class="question-mark">?</span>);
 
+    ctx = <span class="macro">wasi_try_ok!</span>(maybe_backoff::&lt;M&gt;(ctx)<span class="question-mark">?</span>);
     ctx = <span class="macro">wasi_try_ok!</span>(maybe_snapshot::&lt;M&gt;(ctx)<span class="question-mark">?</span>);
 
     <span class="kw">if </span>timeout == TIMEOUT_FOREVER {
@@ -417,7 +418,6 @@
     <span class="comment">// We use asyncify with a deep sleep to wait on new IO events
     </span><span class="kw">let </span>res = __asyncify_with_deep_sleep::&lt;M, <span class="prelude-ty">Result</span>&lt;Vec&lt;(EpollFd, EpollType)&gt;, Errno&gt;, <span class="kw">_</span>&gt;(
         ctx,
-        Duration::from_millis(<span class="number">50</span>),
         Box::pin(trigger),
     )<span class="question-mark">?</span>;
     <span class="kw">if let </span>AsyncifyAction::Finish(<span class="kw-2">mut </span>ctx, events) = res {
